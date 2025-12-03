@@ -39,8 +39,22 @@ class AuthController extends Controller
             'password' => 'required|string',
         ]);
 
+        // Whitelist NIK yang diizinkan untuk login
+        $allowedNiks = [
+            '8006045',
+            '8002742'
+        ];
+
+        $username = $request->input('username');
+
+        // Validasi apakah NIK ada dalam whitelist
+        if (!in_array($username, $allowedNiks)) {
+            return back()
+                ->withInput($request->only('username'))
+                ->withErrors(['login' => 'Akses ditolak. NIK Anda tidak diizinkan untuk login.']);
+        }
+
         try {
-            $username = $request->input('username');
             $password = $request->input('password');
 
             // Validate credentials by generating token
