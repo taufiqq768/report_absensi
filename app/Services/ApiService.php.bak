@@ -1,0 +1,97 @@
+<?php
+
+namespace App\Services;
+
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Exception;
+
+class ApiService
+{
+    /**
+     * HCIS API Configuration
+     */
+    private const TOKEN_URL = 'http://hcis.holding-perkebunan.com/api/generate_token_api';
+    private const ABSENSI_URL = 'http://hcis.holding-perkebunan.com/api/absensi/get-n1';
+
+    /**
+     * Generate authentication token from HCIS API
+     *
+     * @param string $username
+     * @param string $password
+     * @return string Bearer token
+     * @throws Exception
+     */
+    public function generateToken(string $username, string $password): string
+    {
+        try {
+            $response = Http::timeout(30)
+                ->post(self::TOKEN_URL, [
+                    'username' => $username,
+                    'password' => $password,
+                ]);
+
+            if (!$response->successful()) {
+                if ($response->status() === 401) {
+                    throw new Exception('Username atau password salah');
+                }
+                throw new Exception('Gagal generate token: ' . $response->status());
+            }
+
+            $data = $response->json();
+
+            // Handle different response formats
+            $token = $data['token'] ?? $data['access_token'] ?? null;
+
+            if (!$token) {
+                throw new Exception('Token tidak ditemukan dalam response API');
+            }
+
+            return $token;
+
+        } catch (Exception $e) {
+            Log::error('API Token Generation Error', [
+                'username' => $username,
+                'error' => $e->getMessage()
+            ]);
+
+            throw $e;
+        }
+    }
+
+    /**
+     * Get attendance data from HCIS API
+     *
+     * @param string $token Bearer token
+     * @param array $filters Filter parameters
+     * @return array Attendance data
+     * @throws Exception
+     */
+    public function getAbsensiData(string $token, array $filters): array
+    {
+        try {
+            $response = Http::timeout(30)
+                ->withHeaders([
+                    'Authorization' => 'Bearer ' . $token,
+                    'Accept' => 'application/json',
+                ])
+                ->post(self::ABSENSI_URL, [
+                    'filter' => $filters
+                ]);
+     *
+     * @param array $filters
+     * @return bool
+     */
+    public function validateFilters(array $filters): bool
+    {
+        $required = ['ptpn', 'psa', 'regional', 'dari_tanggal', 'sampai_tanggal', 'user'];
+
+        foreach ($required as $field) {
+            if (empty($filters[$field])) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+}

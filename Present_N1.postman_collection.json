@@ -1,0 +1,314 @@
+{
+	"info": {
+		"_postman_id": "3341f595-77ed-47fb-8cbe-6f20d4dc3cd2",
+		"name": "API Presensi PTPN I",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "4052775"
+	},
+	"item": [
+		{
+			"name": "Presensi check in",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://apis.holding-perkebunan.com/aghris/pb-03-5-2-check-in-v2?user-access=AGHRIS_MOBILE&key=270F672B-3CEF-4C6C-A362-359B8B0CAEA1&nik-sap-target=1234567&jenis-absen=N&shift=0&tanggal=2025-10-22&check-in-time=08:07&checkin-long=113.676848&checkin-lat=-8.213997&user=3024420&mood=SENANG",
+					"protocol": "https",
+					"host": [
+						"apis",
+						"holding-perkebunan",
+						"com"
+					],
+					"path": [
+						"aghris",
+						"pb-03-5-2-check-in-v2"
+					],
+					"query": [
+						{
+							"key": "user-access",
+							"value": "AGHRIS_MOBILE"
+						},
+						{
+							"key": "key",
+							"value": "270F672B-3CEF-4C6C-A362-359B8B0CAEA1"
+						},
+						{
+							"key": "nik-sap-target",
+							"value": "1234567",
+							"description": "NIK SAP"
+						},
+						{
+							"key": "jenis-absen",
+							"value": "N",
+							"description": "N = WFO, H = WFH, I = Ijin, D = Dinas"
+						},
+						{
+							"key": "shift",
+							"value": "0",
+							"description": "0 = Normal, 1 = Shift 1, 2 = Shift 2, 3 = Shift 3"
+						},
+						{
+							"key": "tanggal",
+							"value": "2025-10-22",
+							"description": "tanggal"
+						},
+						{
+							"key": "check-in-time",
+							"value": "08:07",
+							"description": "jam"
+						},
+						{
+							"key": "checkin-long",
+							"value": "113.676848",
+							"description": "longitude"
+						},
+						{
+							"key": "checkin-lat",
+							"value": "-8.213997",
+							"description": "latitude"
+						},
+						{
+							"key": "user",
+							"value": "3024420",
+							"description": "NIK SAP"
+						},
+						{
+							"key": "mood",
+							"value": "SENANG",
+							"description": "SENANG,BAHAGIA,GALAU,MARAH"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Presensi check out",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://apis.holding-perkebunan.com/aghris/pb-03-5-2-check-out-v2?user-access=AGHRIS_MOBILE&key=270F672B-3CEF-4C6C-A362-359B8B0CAEA1&nik-sap-target=1234567&tanggal=2025-08-26&check-out-time=21:45&checkout-long=112.7465659&checkout-lat=-7.3232775&user=3023305&mood=SENANG",
+					"protocol": "https",
+					"host": [
+						"apis",
+						"holding-perkebunan",
+						"com"
+					],
+					"path": [
+						"aghris",
+						"pb-03-5-2-check-out-v2"
+					],
+					"query": [
+						{
+							"key": "user-access",
+							"value": "AGHRIS_MOBILE"
+						},
+						{
+							"key": "key",
+							"value": "270F672B-3CEF-4C6C-A362-359B8B0CAEA1"
+						},
+						{
+							"key": "nik-sap-target",
+							"value": "1234567",
+							"description": "NIK SAP"
+						},
+						{
+							"key": "tanggal",
+							"value": "2025-08-26",
+							"description": "tanggal"
+						},
+						{
+							"key": "check-out-time",
+							"value": "21:45",
+							"description": "jam"
+						},
+						{
+							"key": "checkout-long",
+							"value": "112.7465659",
+							"description": "longitude"
+						},
+						{
+							"key": "checkout-lat",
+							"value": "-7.3232775",
+							"description": "latitude"
+						},
+						{
+							"key": "user",
+							"value": "3023305",
+							"description": "NIK SAP"
+						},
+						{
+							"key": "mood",
+							"value": "SENANG",
+							"description": "SENANG,BAHAGIA,GALAU,MARAH"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Token",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "username",
+							"value": "39999910",
+							"description": "NIK SAP",
+							"type": "text"
+						},
+						{
+							"key": "password",
+							"value": "123",
+							"description": "PASSWORD AGHRIS",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{base_url}}/generate_token_api",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"generate_token_api"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Report Absensi",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL2hjaXMuaG9sZGluZy1wZXJrZWJ1bmFuLmNvbS9hcGkvZ2VuZXJhdGVfdG9rZW5fYXBpIiwiaWF0IjoxNzYyMzEzOTIwLCJleHAiOjE3NjIzMTc1MjAsIm5iZiI6MTc2MjMxMzkyMCwianRpIjoiNGNUdHBVTG92eVI4S0VwdCIsInN1YiI6IjM5OTk5OTEwIiwicHJ2IjoiNjA0M2YwYjY5OTk4YzcxM2U5NDQ3MzExODcyNzYyYTUxZWI3ZjVlNSJ9.3NGAQgI2w0eCCyLkQuopsif1Wl4Tr-5aoDPv1a623C0",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "regional",
+							"value": "HEAD_OFFICE",
+							"description": "KODE_REGIONAL",
+							"type": "text"
+						},
+						{
+							"key": "psa",
+							"value": "HA00",
+							"description": "AH00",
+							"type": "text"
+						},
+						{
+							"key": "dari",
+							"value": "2025-11-05",
+							"description": "2025-10-01",
+							"type": "text"
+						},
+						{
+							"key": "sampai",
+							"value": "2025-11-05",
+							"description": "2025-10-31",
+							"type": "text"
+						},
+						{
+							"key": "user",
+							"value": "12345678",
+							"description": "NIK SAP",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{base_url}}/absensi/get-n1",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"absensi",
+						"get-n1"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get List Regional",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL2hjaXMuaG9sZGluZy1wZXJrZWJ1bmFuLmNvbS9hcGkvZ2VuZXJhdGVfdG9rZW5fYXBpIiwiaWF0IjoxNzYyMzEzOTIwLCJleHAiOjE3NjIzMTc1MjAsIm5iZiI6MTc2MjMxMzkyMCwianRpIjoiNGNUdHBVTG92eVI4S0VwdCIsInN1YiI6IjM5OTk5OTEwIiwicHJ2IjoiNjA0M2YwYjY5OTk4YzcxM2U5NDQ3MzExODcyNzYyYTUxZWI3ZjVlNSJ9.3NGAQgI2w0eCCyLkQuopsif1Wl4Tr-5aoDPv1a623C0",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": []
+				},
+				"url": {
+					"raw": "{{base_url}}/list/regional",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"list",
+						"regional"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "{{base_url}}",
+			"value": ""
+		}
+	]
+}

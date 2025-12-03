@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Laporan Absensi Karyawan - HCIS Holding Perkebunan">
+    <title>Laporan Absensi Karyawan</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                <div style="flex: 1; text-align: center;">
+                    <h1>📊 Laporan Absensi</h1>
+                    <p>Sistem Pelaporan Absensi Karyawan HCIS</p>
+                </div>
+                <div id="userInfo" style="display: none; text-align: right;">
+                    <p style="color: var(--text-secondary); margin-bottom: 0.5rem;">
+                        👤 <strong id="loggedInUser"></strong>
+                    </p>
+                    <button id="logoutBtn" class="btn"
+                        style="background: var(--gradient-secondary); padding: 0.5rem 1rem; font-size: 0.9rem;">
+                        🚪 Logout
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Filter Card -->
+        <div class="card">
+            <h2 style="margin-bottom: 1.5rem; color: var(--text-primary);">Filter Data</h2>
+            <form id="filterForm" class="filter-form">
+                <div class="form-group">
+                    <label for="ptpn">PTPN</label>
+                    <input type="text" id="ptpn" name="ptpn" value="AMCO" placeholder="Masukkan PTPN">
+                </div>
+
+                <div class="form-group">
+                    <label for="psa">PSA</label>
+                    <input type="text" id="psa" name="psa" value="HA00" placeholder="Masukkan PSA">
+                </div>
+
+                <div class="form-group">
+                    <label for="regional">Regional</label>
+                    <input type="text" id="regional" name="regional" value="HEAD_OFFICE"
+                        placeholder="Masukkan Regional">
+                </div>
+
+                <div class="form-group">
+                    <label for="dariTanggal">Dari Tanggal</label>
+                    <input type="date" id="dariTanggal" name="dariTanggal" value="2025-11-05">
+                </div>
+
+                <div class="form-group">
+                    <label for="sampaiTanggal">Sampai Tanggal</label>
+                    <input type="date" id="sampaiTanggal" name="sampaiTanggal" value="2025-11-05">
+                </div>
+
+                <div class="form-group">
+                    <label for="user">User ID</label>
+                    <input type="text" id="user" name="user" value="12345678" placeholder="Masukkan User ID">
+                </div>
+            </form>
+
+            <div class="btn-container">
+                <button type="button" id="fetchBtn" class="btn">🔍 Tampilkan Data</button>
+                <button type="button" id="resetBtn" class="btn" style="background: var(--gradient-secondary);">🔄 Reset
+                    Filter</button>
+            </div>
+        </div>
+
+        <!-- Results Card -->
+        <div class="card">
+            <h2 style="margin-bottom: 1.5rem; color: var(--text-primary);">Hasil Data Absensi</h2>
+
+            <!-- Loading State -->
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>Memuat data...</p>
+            </div>
+
+            <!-- Error State -->
+            <div id="errorMessage" class="error-message">
+                <h3>❌ Terjadi Kesalahan</h3>
+                <p id="errorText"></p>
+            </div>
+
+            <!-- Empty State -->
+            <div id="emptyState" class="empty-state">
+                <h3>📭 Tidak Ada Data</h3>
+                <p>Tidak ada data absensi yang ditemukan untuk filter yang dipilih.</p>
+            </div>
+
+            <!-- Data Table -->
+            <div id="tableContainer" class="table-container" style="display: none;">
+                <table id="dataTable">
+                    <thead>
+                        <tr id="tableHeader">
+                            <!-- Headers will be dynamically generated -->
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <!-- Data rows will be dynamically generated -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Data Info -->
+            <div id="dataInfo" style="margin-top: 1rem; color: var(--text-muted); display: none;">
+                <p>Total data: <strong id="totalRecords">0</strong> record(s)</p>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>&copy; 2025 HCIS Holding Perkebunan. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
