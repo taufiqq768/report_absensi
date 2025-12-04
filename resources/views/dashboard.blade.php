@@ -166,6 +166,7 @@
         let filteredData = []; // Store filtered data from search
         let currentPageNum = 1;
         const recordsPerPage = 10; // Number of records per page
+        let displayColumns = []; // Store which columns to display
 
         // DOM Elements
         const elements = {
@@ -254,10 +255,70 @@
 
             // Store all data for pagination
             allData = data;
-            filteredData = data; // Initially, filtered data is same as all data
+            
+            // ===== SORTING DATA =====
+            // Sort by NAMA (ascending), then by TANGGAL (ascending)
+            allData.sort((a, b) => {
+                // First sort by NAMA
+                const namaA = (a.NAMA || '').toString().toUpperCase();
+                const namaB = (b.NAMA || '').toString().toUpperCase();
+                
+                if (namaA < namaB) return -1;
+                if (namaA > namaB) return 1;
+                
+                // If NAMA is the same, sort by TANGGAL
+                const tanggalA = a.TANGGAL || '';
+                const tanggalB = b.TANGGAL || '';
+                
+                if (tanggalA < tanggalB) return -1;
+                if (tanggalA > tanggalB) return 1;
+                
+                return 0;
+            });
+            // ========================
+            
+            filteredData = allData; // Initially, filtered data is same as all data
             currentPageNum = 1;
 
-            const headers = Object.keys(data[0]);
+            // ===== INFORMASI KOLOM YANG TERSEDIA =====
+            const availableColumns = Object.keys(data[0]);
+            console.log('📋 KOLOM YANG TERSEDIA DARI API:');
+            console.log(availableColumns);
+            console.log('Copy salah satu nama kolom di atas untuk ditambahkan ke displayColumns');
+            // ==========================================
+
+            // ===== KONFIGURASI KOLOM YANG DITAMPILKAN =====
+            // Kosongkan array ini untuk menampilkan semua kolom
+            // Atau isi dengan nama kolom yang ingin ditampilkan
+            displayColumns = [
+                'NIK_SAP',
+                'NAMA',
+                'PERSONNEL_SUB_AREA',
+                'NAMA_AFD_DIVISI',
+                'TANGGAL',
+                'HARI',
+                'IS_HARI_KERJA',
+                'JENIS_ABSEN',
+                'CHECK_IN_TIME',
+                'CHECK_OUT_TIME',
+                'JAM_BEKERJA',
+                'STATUS_KEDATANGAN',
+                'STATUS_KEPULANGAN',
+                'INFO_POTONGAN',
+                'PROSEN_POTONGAN_TERLAMBAT_DATANG',
+                'MOOD_IN',
+                'MOOD_OUT'
+
+            ];
+            // ===============================================
+
+            const allHeaders = Object.keys(data[0]);
+
+            // Filter headers jika displayColumns tidak kosong
+            const headers = displayColumns.length > 0
+                ? allHeaders.filter(h => displayColumns.includes(h))
+                : allHeaders;
+
             elements.tableHeader.innerHTML = headers
                 .map(h => `<th>${formatHeaderName(h)}</th>`)
                 .join('');
@@ -308,7 +369,13 @@
                 return;
             }
 
-            const headers = Object.keys(filteredData[0]);
+            const allHeaders = Object.keys(filteredData[0]);
+
+            // Use same column filter as generateTable
+            const headers = displayColumns.length > 0
+                ? allHeaders.filter(h => displayColumns.includes(h))
+                : allHeaders;
+
             const totalRecords = filteredData.length;
             const totalPagesCount = Math.ceil(totalRecords / recordsPerPage);
 
@@ -402,6 +469,13 @@
                 form.appendChild(input);
             });
 
+            // Add displayColumns filter
+            const columnsInput = document.createElement('input');
+            columnsInput.type = 'hidden';
+            columnsInput.name = 'display_columns';
+            columnsInput.value = JSON.stringify(displayColumns);
+            form.appendChild(columnsInput);
+
             document.body.appendChild(form);
             form.submit();
             document.body.removeChild(form);
@@ -432,6 +506,13 @@
                 input.value = dataObject[key];
                 form.appendChild(input);
             });
+
+            // Add displayColumns filter
+            const columnsInput = document.createElement('input');
+            columnsInput.type = 'hidden';
+            columnsInput.name = 'display_columns';
+            columnsInput.value = JSON.stringify(displayColumns);
+            form.appendChild(columnsInput);
 
             document.body.appendChild(form);
             form.submit();

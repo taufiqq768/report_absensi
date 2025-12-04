@@ -118,6 +118,19 @@ class AbsensiController extends Controller
 
             if ($apiResponse['status'] === 'success' && isset($apiResponse['data']['records'])) {
                 $data = $apiResponse['data']['records'];
+
+                // Get display columns filter
+                $displayColumns = $request->input('display_columns');
+                if ($displayColumns) {
+                    $displayColumns = json_decode($displayColumns, true);
+                    if (is_array($displayColumns) && count($displayColumns) > 0) {
+                        // Filter each record to only include selected columns
+                        $data = array_map(function ($record) use ($displayColumns) {
+                            return array_intersect_key($record, array_flip($displayColumns));
+                        }, $data);
+                    }
+                }
+
                 $filename = 'laporan-absensi-' . date('Y-m-d-His') . '.xlsx';
 
                 return Excel::download(new AbsensiExport($data), $filename);
@@ -176,8 +189,23 @@ class AbsensiController extends Controller
             if ($apiResponse['status'] === 'success' && isset($apiResponse['data']['records'])) {
                 $data = $apiResponse['data']['records'];
 
-                // Get headers from first record
-                $headers = !empty($data) ? array_keys($data[0]) : [];
+                // Get display columns filter
+                $displayColumns = $request->input('display_columns');
+                $filteredHeaders = [];
+
+                if ($displayColumns) {
+                    $displayColumns = json_decode($displayColumns, true);
+                    if (is_array($displayColumns) && count($displayColumns) > 0) {
+                        // Filter each record to only include selected columns
+                        $data = array_map(function ($record) use ($displayColumns) {
+                            return array_intersect_key($record, array_flip($displayColumns));
+                        }, $data);
+                        $filteredHeaders = $displayColumns;
+                    }
+                }
+
+                // Get headers from first record or use filtered headers
+                $headers = !empty($filteredHeaders) ? $filteredHeaders : (!empty($data) ? array_keys($data[0]) : []);
 
                 // Format headers
                 $formattedHeaders = array_map(function ($header) {
