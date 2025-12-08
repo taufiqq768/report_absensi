@@ -1,0 +1,50 @@
+# ============================================
+# KONFIGURASI SSH & DATABASE HRIS
+# ============================================
+# 
+# File ini berisi informasi koneksi SSH dan Database HRIS
+# EDIT file ini dengan informasi yang benar dari admin server
+#
+# ============================================
+
+# SSH SERVER CONFIGURATION
+# ============================================
+SSH_HOST=192.168.1.100          # ← EDIT: IP Address server HRIS
+SSH_USER=admin                  # ← EDIT: Username SSH Anda
+SSH_PORT=22                     # ← EDIT: Port SSH (biasanya 22)
+SSH_PASSWORD=                   # ← Password SSH (untuk referensi, jangan simpan di sini!)
+
+# PORT FORWARDING CONFIGURATION
+# ============================================
+LOCAL_PORT=3307                 # Port lokal untuk tunnel (biarkan 3307)
+REMOTE_HOST=127.0.0.1           # Host MySQL di server (biarkan 127.0.0.1)
+REMOTE_PORT=3306                # Port MySQL di server (biasanya 3306)
+
+# MYSQL DATABASE CONFIGURATION
+# ============================================
+DB_HOST=127.0.0.1               # Biarkan 127.0.0.1 (via SSH tunnel)
+DB_PORT=3307                    # Sama dengan LOCAL_PORT di atas
+DB_DATABASE=hris_db_live        # ← EDIT: Nama database di server
+DB_USERNAME=hris_user           # ← EDIT: Username MySQL
+DB_PASSWORD=                    # ← EDIT: Password MySQL
+
+# ============================================
+# CARA MENGGUNAKAN:
+# ============================================
+#
+# 1. Edit semua nilai yang ada tanda "← EDIT"
+# 2. Jalankan: start-ssh-tunnel.bat
+# 3. Copy konfigurasi MySQL ke file .env
+# 4. Test koneksi via browser
+#
+# ============================================
+
+# COMMAND SSH TUNNEL (untuk referensi):
+# ssh -L 3307:127.0.0.1:3306 admin@192.168.1.100 -N -o ServerAliveInterval=60
+
+# KONFIGURASI UNTUK .env:
+# HRIS_DB_HOST=127.0.0.1
+# HRIS_DB_PORT=3307
+# HRIS_DB_DATABASE=hris_db_live
+# HRIS_DB_USERNAME=hris_user
+# HRIS_DB_PASSWORD=your_password_here

@@ -23,13 +23,18 @@
                 </div>
 
                 <div class="form-group">
+                    <label for="regional">Regional</label>
+                    <select id="regional" name="regional"></select>
+                </div>
+
+                <div class="form-group">
                     <label for="psa">PSA</label>
                     <select id="psa" name="psa"></select>
                 </div>
 
                 <div class="form-group">
-                    <label for="regional">Regional</label>
-                    <select id="regional" name="regional"></select>
+                    <label for="divisi">Divisi</label>
+                    <select id="divisi" name="divisi"></select>
                 </div>
 
                 <div class="form-group">
@@ -143,20 +148,94 @@
 
 @push('scripts')
     <script>
-        // Inisialisasi opsi dropdown sederhana (bisa diganti fetch API nanti)
-        const PSA_OPTIONS = ['HA00', 'HB00', 'HC00'];
-        const REGIONAL_OPTIONS = ['HEAD_OFFICE', 'REGIONAL_1', 'REGIONAL_2'];
+        // Inisialisasi opsi dropdown
+        let PSA_OPTIONS = ['HA00', 'HB00', 'HC00']; // Default fallback
+        const REGIONAL_OPTIONS = ['HEAD_OFFICE', 'REGIONAL_1', 'REGIONAL_2', 'REGIONAL_3', 'REGIONAL_4', 'REGIONAL_5', 'REGIONAL_6', 'REGIONAL_7', 'REGIONAL_8'];
+        let DIVISI_OPTIONS = []; // Will be loaded from database
 
         function populateSelect(id, options, selected) {
             const el = document.getElementById(id);
-            el.innerHTML = options
+            // Add empty option at the beginning
+            let html = '<option value="">-- Pilih --</option>';
+            html += options
                 .map(opt => `<option value="${opt}" ${opt === selected ? 'selected' : ''}>${opt}</option>`)
                 .join('');
+            el.innerHTML = html;
         }
 
-        // Set default pilihan
-        populateSelect('psa', PSA_OPTIONS, 'HA00');
-        populateSelect('regional', REGIONAL_OPTIONS, 'HEAD_OFFICE');
+        // Fetch PSA options from database
+        async function loadPsaOptions() {
+            try {
+                const response = await fetch("{{ route('api.psa.options') }}");
+                const result = await response.json();
+
+                if (result.success && result.data && result.data.length > 0) {
+                    PSA_OPTIONS = result.data;
+                }
+            } catch (error) {
+                console.error('Error loading PSA options:', error);
+                // Use default PSA_OPTIONS if fetch fails
+            }
+
+            // Populate PSA dropdown after loading with empty default
+            populateSelect('psa', PSA_OPTIONS, '');
+        }
+
+        // Fetch Divisi options from database
+        async function loadDivisiOptions() {
+            try {
+                const response = await fetch("{{ route('api.divisi.options') }}");
+                const result = await response.json();
+
+                if (result.success && result.data && result.data.length > 0) {
+                    DIVISI_OPTIONS = result.data;
+                }
+            } catch (error) {
+                console.error('Error loading Divisi options:', error);
+                // Use empty array if fetch fails
+            }
+
+            // Populate Divisi dropdown after loading
+            if (DIVISI_OPTIONS.length > 0) {
+                populateSelect('divisi', DIVISI_OPTIONS, '');
+            }
+        }
+
+        // Load options on page load
+        loadPsaOptions();
+        loadDivisiOptions();
+
+        // Set default pilihan untuk regional (empty)
+        populateSelect('regional', REGIONAL_OPTIONS, '');
+
+        // Regional dropdown change handler
+        const regionalSelect = document.getElementById('regional');
+        const psaSelect = document.getElementById('psa');
+        const divisiSelect = document.getElementById('divisi');
+
+        function handleRegionalChange() {
+            const selectedRegional = regionalSelect.value;
+
+            if (selectedRegional === 'HEAD_OFFICE') {
+                // Jika HEAD_OFFICE, set PSA ke HA00 dan enable Divisi
+                psaSelect.value = 'HA00';
+                divisiSelect.disabled = false;
+            } else if (selectedRegional === '') {
+                // Jika kosong, disable Divisi dan tidak set PSA
+                divisiSelect.disabled = true;
+                divisiSelect.value = ''; // Clear selection
+            } else {
+                // Jika regional lain (bukan HEAD_OFFICE dan tidak kosong), disable Divisi
+                divisiSelect.disabled = true;
+                divisiSelect.value = ''; // Clear selection
+            }
+        }
+
+        // Add event listener untuk Regional
+        regionalSelect.addEventListener('change', handleRegionalChange);
+
+        // Initial setup saat page load
+        handleRegionalChange();
 
         // CSRF Token
         const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
@@ -165,7 +244,7 @@
         let allData = []; // Store all fetched data
         let filteredData = []; // Store filtered data from search
         let currentPageNum = 1;
-        const recordsPerPage = 10; // Number of records per page
+        const recordsPerPage = 25; // Number of records per page
         let displayColumns = []; // Store which columns to display
 
         // DOM Elements
@@ -255,28 +334,28 @@
 
             // Store all data for pagination
             allData = data;
-            
+
             // ===== SORTING DATA =====
             // Sort by NAMA (ascending), then by TANGGAL (ascending)
             allData.sort((a, b) => {
                 // First sort by NAMA
                 const namaA = (a.NAMA || '').toString().toUpperCase();
                 const namaB = (b.NAMA || '').toString().toUpperCase();
-                
+
                 if (namaA < namaB) return -1;
                 if (namaA > namaB) return 1;
-                
+
                 // If NAMA is the same, sort by TANGGAL
                 const tanggalA = a.TANGGAL || '';
                 const tanggalB = b.TANGGAL || '';
-                
+
                 if (tanggalA < tanggalB) return -1;
                 if (tanggalA > tanggalB) return 1;
-                
+
                 return 0;
             });
             // ========================
-            
+
             filteredData = allData; // Initially, filtered data is same as all data
             currentPageNum = 1;
 
@@ -294,7 +373,8 @@
                 'NIK_SAP',
                 'NAMA',
                 'PERSONNEL_SUB_AREA',
-                'NAMA_AFD_DIVISI',
+                'REGIONAL',
+                'DIVISI',
                 'TANGGAL',
                 'HARI',
                 'IS_HARI_KERJA',
@@ -308,16 +388,15 @@
                 'PROSEN_POTONGAN_TERLAMBAT_DATANG',
                 'MOOD_IN',
                 'MOOD_OUT'
-
             ];
             // ===============================================
 
             const allHeaders = Object.keys(data[0]);
 
-            // Filter headers jika displayColumns tidak kosong
-            const headers = displayColumns.length > 0
-                ? allHeaders.filter(h => displayColumns.includes(h))
-                : allHeaders;
+            // Filter dan urutkan headers sesuai displayColumns
+            const headers = displayColumns.length > 0 ?
+                displayColumns.filter(h => allHeaders.includes(h)) :
+                allHeaders;
 
             elements.tableHeader.innerHTML = headers
                 .map(h => `<th>${formatHeaderName(h)}</th>`)
@@ -364,17 +443,18 @@
         // RENDER PAGE - Display current page of data
         function renderPage() {
             if (filteredData.length === 0) {
-                elements.tableBody.innerHTML = '<tr><td colspan="100" style="text-align: center; padding: 2rem; color: var(--text-muted);">Tidak ada data yang sesuai dengan pencarian</td></tr>';
+                elements.tableBody.innerHTML =
+                    '<tr><td colspan="100" style="text-align: center; padding: 2rem; color: var(--text-muted);">Tidak ada data yang sesuai dengan pencarian</td></tr>';
                 elements.paginationContainer.style.display = 'none';
                 return;
             }
 
             const allHeaders = Object.keys(filteredData[0]);
 
-            // Use same column filter as generateTable
-            const headers = displayColumns.length > 0
-                ? allHeaders.filter(h => displayColumns.includes(h))
-                : allHeaders;
+            // Use same column filter as generateTable - urutkan sesuai displayColumns
+            const headers = displayColumns.length > 0 ?
+                displayColumns.filter(h => allHeaders.includes(h)) :
+                allHeaders;
 
             const totalRecords = filteredData.length;
             const totalPagesCount = Math.ceil(totalRecords / recordsPerPage);

@@ -82,3 +82,4 @@ class ApiService
         }
     }
 }
+$rows = \DB::connection('hris_mysql')->table('pegawai')->limit(10)->get();

@@ -42,7 +42,12 @@ class AuthController extends Controller
         // Whitelist NIK yang diizinkan untuk login
         $allowedNiks = [
             '8006045',
-            '8002742'
+            '8002742',
+            '8200003',
+            '12020749',
+            '12020633',
+            '2000065'
+
         ];
 
         $username = $request->input('username');

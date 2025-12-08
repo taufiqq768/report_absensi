@@ -9,6 +9,7 @@ use Exception;
 use App\Exports\AbsensiExport;
 use Maatwebsite\Excel\Facades\Excel;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Models\Employee;
 
 class AbsensiController extends Controller
 {
@@ -35,6 +36,7 @@ class AbsensiController extends Controller
                 'dari_tanggal' => 'required|date',
                 'sampai_tanggal' => 'required|date',
                 'user' => 'required|string',
+                'divisi' => 'nullable|string', // Optional, hanya untuk HEAD_OFFICE
             ]);
 
             $credentials = Session::get('credentials');
@@ -62,7 +64,61 @@ class AbsensiController extends Controller
 
             $apiResponse = $this->apiService->getAbsensiData($token, $filters);
 
-            // \Log::info('Controller received API response', ['response' => $apiResponse]);
+            // Gabungkan kolom REGIONAL_GROUP dan COSTCENTER dari HRIS (Employee) ke records API
+            if (
+                isset($apiResponse['status']) &&
+                $apiResponse['status'] === 'success' &&
+                isset($apiResponse['data']['records']) &&
+                is_array($apiResponse['data']['records'])
+            ) {
+                $records = $apiResponse['data']['records'];
+
+                // Normalisasi NIK: jika 7 karakter, tambahkan "0" di depan (jadi 8)
+                $niks = collect($records)->pluck('NIK_SAP')
+                    ->filter()
+                    ->map(function ($nik) {
+                        $nikStr = (string) $nik;
+                        return strlen($nikStr) === 7 ? ('0' . $nikStr) : $nikStr;
+                    })
+                    ->unique()
+                    ->values()
+                    ->all();
+
+                if (!empty($niks)) {
+                    $employees = Employee::select(['nik', 'regional_grup', 'cost_center'])
+                        ->whereIn('nik', $niks)
+                        ->get()
+                        ->keyBy('nik');
+
+                    $merged = array_map(function ($row) use ($employees) {
+                        $nikSap = $row['NIK_SAP'] ?? null;
+                        $nikKey = null;
+                        if ($nikSap !== null) {
+                            $nikStr = (string) $nikSap;
+                            $nikKey = strlen($nikStr) === 7 ? ('0' . $nikStr) : $nikStr;
+                        }
+                        $emp = $nikKey ? $employees->get($nikKey) : null;
+                        $row['REGIONAL'] = $emp->regional_grup ?? null;
+                        $row['DIVISI'] = $emp->cost_center ?? null;
+                        return $row;
+                    }, $records);
+
+                    // Filter berdasarkan Divisi jika Regional = HEAD_OFFICE dan Divisi dipilih
+                    $regional = $request->input('regional');
+                    $divisi = $request->input('divisi');
+
+                    if ($regional === 'HEAD_OFFICE' && !empty($divisi)) {
+                        $merged = array_filter($merged, function ($row) use ($divisi) {
+                            return isset($row['DIVISI']) && $row['DIVISI'] === $divisi;
+                        });
+                        // Re-index array after filtering
+                        $merged = array_values($merged);
+                    }
+
+                    $apiResponse['data']['records'] = $merged;
+                    $apiResponse['data']['total_records'] = count($merged);
+                }
+            }
 
             return response()->json($apiResponse);
 
@@ -89,6 +145,7 @@ class AbsensiController extends Controller
                 'dari_tanggal' => 'required|date',
                 'sampai_tanggal' => 'required|date',
                 'user' => 'required|string',
+                'divisi' => 'nullable|string', // Optional, hanya untuk HEAD_OFFICE
             ]);
 
             $credentials = Session::get('credentials');
@@ -119,12 +176,55 @@ class AbsensiController extends Controller
             if ($apiResponse['status'] === 'success' && isset($apiResponse['data']['records'])) {
                 $data = $apiResponse['data']['records'];
 
+                // Gabungkan kolom REGIONAL_GROUP dan COSTCENTER dari HRIS (Employee)
+                // Normalisasi NIK: jika 7 karakter, tambahkan "0" di depan (jadi 8)
+                $niks = collect($data)->pluck('NIK_SAP')
+                    ->filter()
+                    ->map(function ($nik) {
+                        $nikStr = (string) $nik;
+                        return strlen($nikStr) === 7 ? ('0' . $nikStr) : $nikStr;
+                    })
+                    ->unique()
+                    ->values()
+                    ->all();
+
+                if (!empty($niks)) {
+                    $employees = Employee::select(['nik', 'regional_grup', 'cost_center'])
+                        ->whereIn('nik', $niks)
+                        ->get()
+                        ->keyBy('nik');
+
+                    $data = array_map(function ($row) use ($employees) {
+                        $nikSap = $row['NIK_SAP'] ?? null;
+                        $nikKey = null;
+                        if ($nikSap !== null) {
+                            $nikStr = (string) $nikSap;
+                            $nikKey = strlen($nikStr) === 7 ? ('0' . $nikStr) : $nikStr;
+                        }
+                        $emp = $nikKey ? $employees->get($nikKey) : null;
+                        $row['REGIONAL'] = $emp->regional_grup ?? null;
+                        $row['DIVISI'] = $emp->cost_center ?? null;
+                        return $row;
+                    }, $data);
+
+                    // Filter berdasarkan Divisi jika Regional = HEAD_OFFICE dan Divisi dipilih
+                    $regional = $request->input('regional');
+                    $divisi = $request->input('divisi');
+
+                    if ($regional === 'HEAD_OFFICE' && !empty($divisi)) {
+                        $data = array_filter($data, function ($row) use ($divisi) {
+                            return isset($row['DIVISI']) && $row['DIVISI'] === $divisi;
+                        });
+                        // Re-index array after filtering
+                        $data = array_values($data);
+                    }
+                }
+
                 // Get display columns filter
                 $displayColumns = $request->input('display_columns');
                 if ($displayColumns) {
                     $displayColumns = json_decode($displayColumns, true);
                     if (is_array($displayColumns) && count($displayColumns) > 0) {
-                        // Filter each record to only include selected columns
                         $data = array_map(function ($record) use ($displayColumns) {
                             return array_intersect_key($record, array_flip($displayColumns));
                         }, $data);
@@ -159,6 +259,7 @@ class AbsensiController extends Controller
                 'dari_tanggal' => 'required|date',
                 'sampai_tanggal' => 'required|date',
                 'user' => 'required|string',
+                'divisi' => 'nullable|string', // Optional, hanya untuk HEAD_OFFICE
             ]);
 
             $credentials = Session::get('credentials');
@@ -189,6 +290,47 @@ class AbsensiController extends Controller
             if ($apiResponse['status'] === 'success' && isset($apiResponse['data']['records'])) {
                 $data = $apiResponse['data']['records'];
 
+                // Normalisasi NIK: jika 7 karakter, tambahkan "0" di depan (jadi 8)
+                $niks = collect($data)->pluck('NIK_SAP')
+                    ->filter()
+                    ->map(function ($nik) {
+                        $nikStr = (string) $nik;
+                        return strlen($nikStr) === 7 ? ('0' . $nikStr) : $nikStr;
+                    })
+                    ->unique()
+                    ->values()
+                    ->all();
+
+                $employees = \App\Models\Employee::select(['nik', 'regional_grup', 'cost_center'])
+                    ->whereIn('nik', $niks)
+                    ->get()
+                    ->keyBy('nik');
+
+                $data = array_map(function ($row) use ($employees) {
+                    $nikSap = $row['NIK_SAP'] ?? null;
+                    $nikKey = null;
+                    if ($nikSap !== null) {
+                        $nikStr = (string) $nikSap;
+                        $nikKey = strlen($nikStr) === 7 ? ('0' . $nikStr) : $nikStr;
+                    }
+                    $emp = $nikKey ? $employees->get($nikKey) : null;
+                    $row['REGIONAL'] = $emp->regional_grup ?? null;
+                    $row['DIVISI'] = $emp->cost_center ?? null;
+                    return $row;
+                }, $data);
+
+                // Filter berdasarkan Divisi jika Regional = HEAD_OFFICE dan Divisi dipilih
+                $regional = $request->input('regional');
+                $divisi = $request->input('divisi');
+
+                if ($regional === 'HEAD_OFFICE' && !empty($divisi)) {
+                    $data = array_filter($data, function ($row) use ($divisi) {
+                        return isset($row['DIVISI']) && $row['DIVISI'] === $divisi;
+                    });
+                    // Re-index array after filtering
+                    $data = array_values($data);
+                }
+
                 // Get display columns filter
                 $displayColumns = $request->input('display_columns');
                 $filteredHeaders = [];
@@ -196,7 +338,6 @@ class AbsensiController extends Controller
                 if ($displayColumns) {
                     $displayColumns = json_decode($displayColumns, true);
                     if (is_array($displayColumns) && count($displayColumns) > 0) {
-                        // Filter each record to only include selected columns
                         $data = array_map(function ($record) use ($displayColumns) {
                             return array_intersect_key($record, array_flip($displayColumns));
                         }, $data);
@@ -204,10 +345,7 @@ class AbsensiController extends Controller
                     }
                 }
 
-                // Get headers from first record or use filtered headers
                 $headers = !empty($filteredHeaders) ? $filteredHeaders : (!empty($data) ? array_keys($data[0]) : []);
-
-                // Format headers
                 $formattedHeaders = array_map(function ($header) {
                     return ucwords(str_replace('_', ' ', $header));
                 }, $headers);
@@ -238,4 +376,60 @@ class AbsensiController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Get PSA options from Employee database
+     */
+    public function getPsaOptions()
+    {
+        try {
+            $psaOptions = Employee::select('area_kode')
+                ->whereNotNull('area_kode')
+                ->where('area_kode', '!=', '')
+                ->distinct()
+                ->orderBy('area_kode', 'asc')
+                ->pluck('area_kode')
+                ->toArray();
+
+            return response()->json([
+                'success' => true,
+                'data' => $psaOptions
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'data' => []
+            ], 500);
+        }
+    }
+
+    /**
+     * Get Divisi options from Employee database
+     */
+    public function getDivisiOptions()
+    {
+        try {
+            $divisiOptions = Employee::select('cost_center')
+                ->whereNotNull('cost_center')
+                ->where('cost_center', '!=', '')
+                ->whereLike('cost_center', 'divisi%')
+                ->distinct()
+                ->orderBy('cost_center', 'asc')
+                ->pluck('cost_center')
+                ->toArray();
+
+            return response()->json([
+                'success' => true,
+                'data' => $divisiOptions
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'data' => []
+            ], 500);
+        }
+    }
+
 }
