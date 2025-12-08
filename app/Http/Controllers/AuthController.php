@@ -47,7 +47,6 @@ class AuthController extends Controller
             '12020749',
             '12020633',
             '2000065'
-
         ];
 
         $username = $request->input('username');
