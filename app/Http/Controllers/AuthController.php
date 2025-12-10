@@ -79,9 +79,24 @@ class AuthController extends Controller
                 ->with('success', 'Login berhasil!');
 
         } catch (Exception $e) {
+            // Log the full error for debugging
+            \Log::error('Login failed', [
+                'username' => $username,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            // Provide user-friendly error message
+            $errorMessage = $e->getMessage();
+
+            // Add helpful tips for common errors
+            if (str_contains($errorMessage, 'timeout') || str_contains($errorMessage, 'timed out')) {
+                $errorMessage .= ' Silakan coba lagi dalam beberapa saat.';
+            }
+
             return back()
                 ->withInput($request->only('username'))
-                ->withErrors(['login' => $e->getMessage()]);
+                ->withErrors(['login' => '❌ Login Gagal: ' . $errorMessage]);
         }
     }
 
