@@ -113,7 +113,7 @@
         .loading-spinner {
             width: 80px;
             height: 80px;
-            margin-bottom: 1.5rem;
+            margin: 0 auto 1.5rem;
             position: relative;
         }
 
@@ -422,6 +422,6 @@
             @if($errors->any() || session('error'))
                 hideLoading();
             @endif
-        });
+            });
     </script>
 @endpush

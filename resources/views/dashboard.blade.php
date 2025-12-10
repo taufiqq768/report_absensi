@@ -2,6 +2,171 @@
 
 @section('title', 'Dashboard')
 
+@push('styles')
+    <style>
+        /* Loading Overlay Styles for Dashboard */
+        .loading-overlay-dashboard {
+            display: none;
+            text-align: center;
+            padding: var(--spacing-xl);
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 400px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .loading-overlay-dashboard.active {
+            display: flex;
+        }
+
+        .loading-spinner-dashboard {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 1.5rem;
+            position: relative;
+        }
+
+        .loading-spinner-dashboard::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: 4px solid rgba(34, 197, 94, 0.1);
+            border-radius: 50%;
+        }
+
+        .loading-spinner-dashboard::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: 4px solid transparent;
+            border-top-color: #22c55e;
+            border-right-color: #0ea5e9;
+            border-radius: 50%;
+            animation: spin 1s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading-content-dashboard {
+            text-align: center;
+            max-width: 400px;
+            padding: 0 1rem;
+        }
+
+        .loading-title-dashboard {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .loading-message-dashboard {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+            min-height: 24px;
+            transition: all 0.3s ease;
+        }
+
+        .loading-progress-dashboard {
+            width: 100%;
+            max-width: 350px;
+            height: 6px;
+            background: rgba(34, 197, 94, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 0 auto 1rem;
+        }
+
+        .loading-progress-bar-dashboard {
+            height: 100%;
+            background: linear-gradient(90deg, #22c55e, #0ea5e9);
+            border-radius: 10px;
+            width: 0%;
+            transition: width 0.5s ease;
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.7;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        .loading-time-dashboard {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .loading-dots-dashboard {
+            display: inline-flex;
+            gap: 4px;
+        }
+
+        .loading-dots-dashboard span {
+            width: 6px;
+            height: 6px;
+            background: #22c55e;
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+
+        .loading-dots-dashboard span:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+
+        .loading-dots-dashboard span:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+
+        @keyframes bounce {
+
+            0%,
+            80%,
+            100% {
+                transform: scale(0);
+            }
+
+            40% {
+                transform: scale(1);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+    </style>
+@endpush
+
 @section('content')
     <div class="container">
         <header class="header">
@@ -39,12 +204,12 @@
 
                 <div class="form-group">
                     <label for="dari_tanggal">Dari Tanggal</label>
-                    <input type="date" id="dari_tanggal" name="dari_tanggal">
+                    <input type="date" id="dari_tanggal" name="dari_tanggal" max="{{ date('Y-m-d') }}">
                 </div>
 
                 <div class="form-group">
                     <label for="sampai_tanggal">Sampai Tanggal</label>
-                    <input type="date" id="sampai_tanggal" name="sampai_tanggal">
+                    <input type="date" id="sampai_tanggal" name="sampai_tanggal" max="{{ date('Y-m-d') }}">
                 </div>
 
                 <div class="form-group" style="display: none;">
@@ -73,10 +238,24 @@
         <div class="card">
             <h2 style="margin-bottom: 1.5rem; color: var(--text-primary);">Hasil Data Absensi</h2>
 
-            <!-- Loading State -->
-            <div id="loading" class="loading">
-                <div class="spinner"></div>
-                <p>Memuat data...</p>
+            <!-- Loading Overlay (Informative) -->
+            <div id="loading" class="loading-overlay-dashboard">
+                <div class="loading-spinner-dashboard"></div>
+                <div class="loading-content-dashboard">
+                    <div class="loading-title-dashboard">Memuat Data Absensi</div>
+                    <div class="loading-message-dashboard" id="loadingMessageDashboard">Menghubungi server...</div>
+                    <div class="loading-progress-dashboard">
+                        <div class="loading-progress-bar-dashboard" id="progressBarDashboard"></div>
+                    </div>
+                    <div class="loading-time-dashboard">
+                        <span id="timeElapsedDashboard">0</span> detik
+                        <div class="loading-dots-dashboard">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Error State -->
@@ -148,6 +327,21 @@
 
 @push('scripts')
     <script>
+        // Loading messages that change over time for dashboard
+        const loadingMessagesDashboard = [
+            { time: 0, message: 'Menghubungi server HCIS...', progress: 10 },
+            { time: 5, message: 'Mengambil data absensi...', progress: 25 },
+            { time: 10, message: 'Memproses data dari database...', progress: 40 },
+            { time: 15, message: 'Server sedang memproses...', progress: 55 },
+            { time: 20, message: 'Menyiapkan data untuk ditampilkan...', progress: 70 },
+            { time: 30, message: 'Hampir selesai, mohon tunggu...', progress: 85 },
+            { time: 40, message: 'Server sedang lambat, harap bersabar...', progress: 90 },
+            { time: 50, message: 'Masih memproses, terima kasih atas kesabaran Anda...', progress: 95 }
+        ];
+
+        let loadingIntervalDashboard = null;
+        let startTimeDashboard = null;
+
         // Inisialisasi opsi dropdown
         let PSA_OPTIONS = ['HA00', 'HB00', 'HC00']; // Default fallback
         const REGIONAL_OPTIONS = ['HEAD_OFFICE', 'REGIONAL_1', 'REGIONAL_2', 'REGIONAL_3', 'REGIONAL_4', 'REGIONAL_5', 'REGIONAL_6', 'REGIONAL_7', 'REGIONAL_8'];
@@ -237,6 +431,34 @@
         // Initial setup saat page load
         handleRegionalChange();
 
+        // Date input validation
+        const dariTanggalInput = document.getElementById('dari_tanggal');
+        const sampaiTanggalInput = document.getElementById('sampai_tanggal');
+
+        // When "Dari Tanggal" changes, update min value of "Sampai Tanggal"
+        dariTanggalInput.addEventListener('change', function() {
+            const dariValue = this.value;
+            if (dariValue) {
+                sampaiTanggalInput.min = dariValue;
+                
+                // If "Sampai Tanggal" is already set and is earlier than "Dari Tanggal", clear it
+                if (sampaiTanggalInput.value && sampaiTanggalInput.value < dariValue) {
+                    sampaiTanggalInput.value = '';
+                }
+            }
+        });
+
+        // When "Sampai Tanggal" changes, validate it's not earlier than "Dari Tanggal"
+        sampaiTanggalInput.addEventListener('change', function() {
+            const dariValue = dariTanggalInput.value;
+            const sampaiValue = this.value;
+            
+            if (dariValue && sampaiValue && sampaiValue < dariValue) {
+                alert('Tanggal "Sampai" tidak boleh lebih awal dari tanggal "Dari"');
+                this.value = '';
+            }
+        });
+
         // CSRF Token
         const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
@@ -253,6 +475,9 @@
             resetBtn: document.getElementById('resetBtn'),
             filterForm: document.getElementById('filterForm'),
             loading: document.getElementById('loading'),
+            loadingMessageDashboard: document.getElementById('loadingMessageDashboard'),
+            progressBarDashboard: document.getElementById('progressBarDashboard'),
+            timeElapsedDashboard: document.getElementById('timeElapsedDashboard'),
             errorMessage: document.getElementById('errorMessage'),
             errorText: document.getElementById('errorText'),
             emptyState: document.getElementById('emptyState'),
@@ -283,7 +508,7 @@
 
         // FETCH BUTTON ACTION
         elements.fetchBtn.addEventListener('click', () => {
-            showLoading();
+            showLoadingWithProgress();
 
             const formData = new FormData(elements.filterForm);
             const dataObject = Object.fromEntries(formData.entries());
@@ -302,6 +527,7 @@
                 .then(response => {
                     console.log("API response:", response);
 
+                    hideLoadingWithProgress();
                     elements.fetchBtn.disabled = false;
 
                     if (response.status === "success") {
@@ -322,6 +548,7 @@
                 })
                 .catch(error => {
                     console.error("Fetch error:", error);
+                    hideLoadingWithProgress();
                     elements.messageBox.innerHTML =
                         `<div class="alert alert-danger">❌ Terjadi kesalahan saat memproses data</div>`;
                     showError(error.message);
@@ -646,10 +873,44 @@
             elements.dataInfo.style.display = 'none';
         }
 
-        function showLoading() {
+        function showLoadingWithProgress() {
             hideAllStates();
             elements.loading.classList.add('active');
             elements.fetchBtn.disabled = true;
+
+            // Start timer
+            startTimeDashboard = Date.now();
+            let elapsedSeconds = 0;
+
+            // Reset progress
+            elements.progressBarDashboard.style.width = '0%';
+            elements.timeElapsedDashboard.textContent = '0';
+            elements.loadingMessageDashboard.textContent = 'Menghubungi server...';
+
+            // Update progress and messages
+            loadingIntervalDashboard = setInterval(() => {
+                elapsedSeconds = Math.floor((Date.now() - startTimeDashboard) / 1000);
+                elements.timeElapsedDashboard.textContent = elapsedSeconds;
+
+                // Update message and progress based on elapsed time
+                for (let i = loadingMessagesDashboard.length - 1; i >= 0; i--) {
+                    if (elapsedSeconds >= loadingMessagesDashboard[i].time) {
+                        elements.loadingMessageDashboard.textContent = loadingMessagesDashboard[i].message;
+                        elements.progressBarDashboard.style.width = loadingMessagesDashboard[i].progress + '%';
+                        break;
+                    }
+                }
+            }, 100);
+        }
+
+        function hideLoadingWithProgress() {
+            elements.loading.classList.remove('active');
+            elements.fetchBtn.disabled = false;
+
+            if (loadingIntervalDashboard) {
+                clearInterval(loadingIntervalDashboard);
+                loadingIntervalDashboard = null;
+            }
         }
 
         function showError(message) {
