@@ -436,11 +436,11 @@
         const sampaiTanggalInput = document.getElementById('sampai_tanggal');
 
         // When "Dari Tanggal" changes, update min value of "Sampai Tanggal"
-        dariTanggalInput.addEventListener('change', function() {
+        dariTanggalInput.addEventListener('change', function () {
             const dariValue = this.value;
             if (dariValue) {
                 sampaiTanggalInput.min = dariValue;
-                
+
                 // If "Sampai Tanggal" is already set and is earlier than "Dari Tanggal", clear it
                 if (sampaiTanggalInput.value && sampaiTanggalInput.value < dariValue) {
                     sampaiTanggalInput.value = '';
@@ -449,10 +449,10 @@
         });
 
         // When "Sampai Tanggal" changes, validate it's not earlier than "Dari Tanggal"
-        sampaiTanggalInput.addEventListener('change', function() {
+        sampaiTanggalInput.addEventListener('change', function () {
             const dariValue = dariTanggalInput.value;
             const sampaiValue = this.value;
-            
+
             if (dariValue && sampaiValue && sampaiValue < dariValue) {
                 alert('Tanggal "Sampai" tidak boleh lebih awal dari tanggal "Dari"');
                 this.value = '';
@@ -513,7 +513,7 @@
             const formData = new FormData(elements.filterForm);
             const dataObject = Object.fromEntries(formData.entries());
 
-            console.log("Sending Filters:", dataObject);
+            // console.log("Sending Filters:", dataObject);
 
             fetch("{{ route('absensi.data') }}", {
                 method: "POST",
@@ -525,7 +525,7 @@
             })
                 .then(response => response.json())
                 .then(response => {
-                    console.log("API response:", response);
+                    // console.log("API response:", response);
 
                     hideLoadingWithProgress();
                     elements.fetchBtn.disabled = false;
@@ -588,9 +588,9 @@
 
             // ===== INFORMASI KOLOM YANG TERSEDIA =====
             const availableColumns = Object.keys(data[0]);
-            console.log('📋 KOLOM YANG TERSEDIA DARI API:');
-            console.log(availableColumns);
-            console.log('Copy salah satu nama kolom di atas untuk ditambahkan ke displayColumns');
+            // console.log('📋 KOLOM YANG TERSEDIA DARI API:');
+            // console.log(availableColumns);
+            // console.log('Copy salah satu nama kolom di atas untuk ditambahkan ke displayColumns');
             // ==========================================
 
             // ===== KONFIGURASI KOLOM YANG DITAMPILKAN =====

@@ -101,11 +101,14 @@ class AuthController extends Controller
     }
 
     /**
-     * Logout user
+     * Logout user (optimized)
      */
     public function logout()
     {
-        Session::flush();
+        // Only remove authentication-related session data
+        // This is faster than Session::flush()
+        Session::forget(['authenticated', 'username', 'credentials']);
+
         return redirect()->route('login')
             ->with('success', 'Anda telah logout');
     }

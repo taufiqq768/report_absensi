@@ -73,6 +73,7 @@ class AbsensiController extends Controller
             ) {
                 $records = $apiResponse['data']['records'];
 
+
                 // Normalisasi NIK: jika 7 karakter, tambahkan "0" di depan (jadi 8)
                 $niks = collect($records)->pluck('NIK_SAP')
                     ->filter()
@@ -85,38 +86,59 @@ class AbsensiController extends Controller
                     ->all();
 
                 if (!empty($niks)) {
-                    $employees = Employee::select(['nik', 'regional_grup', 'cost_center'])
-                        ->whereIn('nik', $niks)
-                        ->get()
-                        ->keyBy('nik');
+                    try {
+                        // Split into chunks to avoid timeout on large queries
+                        $chunkSize = 100; // Process 100 NIKs at a time
+                        $employees = collect();
 
-                    $merged = array_map(function ($row) use ($employees) {
-                        $nikSap = $row['NIK_SAP'] ?? null;
-                        $nikKey = null;
-                        if ($nikSap !== null) {
-                            $nikStr = (string) $nikSap;
-                            $nikKey = strlen($nikStr) === 7 ? ('0' . $nikStr) : $nikStr;
+                        foreach (array_chunk($niks, $chunkSize) as $nikChunk) {
+                            $chunkResult = Employee::select(['nik', 'regional_grup', 'cost_center'])
+                                ->whereIn('nik', $nikChunk)
+                                ->get();
+
+                            $employees = $employees->merge($chunkResult);
                         }
-                        $emp = $nikKey ? $employees->get($nikKey) : null;
-                        $row['REGIONAL'] = $emp->regional_grup ?? null;
-                        $row['DIVISI'] = $emp->cost_center ?? null;
-                        return $row;
-                    }, $records);
 
-                    // Filter berdasarkan Divisi jika Regional = HEAD_OFFICE dan Divisi dipilih
-                    $regional = $request->input('regional');
-                    $divisi = $request->input('divisi');
+                        $employees = $employees->keyBy('nik');
 
-                    if ($regional === 'HEAD_OFFICE' && !empty($divisi)) {
-                        $merged = array_filter($merged, function ($row) use ($divisi) {
-                            return isset($row['DIVISI']) && $row['DIVISI'] === $divisi;
-                        });
-                        // Re-index array after filtering
-                        $merged = array_values($merged);
+                        $merged = array_map(function ($row) use ($employees) {
+                            $nikSap = $row['NIK_SAP'] ?? null;
+                            $nikKey = null;
+                            if ($nikSap !== null) {
+                                $nikStr = (string) $nikSap;
+                                $nikKey = strlen($nikStr) === 7 ? ('0' . $nikStr) : $nikStr;
+                            }
+                            $emp = $nikKey ? $employees->get($nikKey) : null;
+                            $row['REGIONAL'] = $emp->regional_grup ?? null;
+                            $row['DIVISI'] = $emp->cost_center ?? null;
+                            return $row;
+                        }, $records);
+
+                        // Filter berdasarkan Divisi jika Regional = HEAD_OFFICE dan Divisi dipilih
+                        $regional = $request->input('regional');
+                        $divisi = $request->input('divisi');
+
+                        if ($regional === 'HEAD_OFFICE' && !empty($divisi)) {
+                            $merged = array_filter($merged, function ($row) use ($divisi) {
+                                return isset($row['DIVISI']) && $row['DIVISI'] === $divisi;
+                            });
+                            // Re-index array after filtering
+                            $merged = array_values($merged);
+                        }
+
+                        $apiResponse['data']['records'] = $merged;
+                        $apiResponse['data']['total_records'] = count($merged);
+
+                    } catch (\Exception $dbError) {
+                        // Log database error but continue with API data only
+                        \Log::error('HRIS Database Error', [
+                            'error' => $dbError->getMessage(),
+                            'niks_count' => count($niks)
+                        ]);
+
+                        // Return API data without REGIONAL and DIVISI columns
+                        // Better than failing completely
                     }
-
-                    $apiResponse['data']['records'] = $merged;
-                    $apiResponse['data']['total_records'] = count($merged);
                 }
             }
 
@@ -378,55 +400,69 @@ class AbsensiController extends Controller
     }
 
     /**
-     * Get PSA options from Employee database
+     * Get PSA options from Employee database (with caching)
      */
     public function getPsaOptions()
     {
         try {
-            $psaOptions = Employee::select('area_kode')
-                ->whereNotNull('area_kode')
-                ->where('area_kode', '!=', '')
-                ->distinct()
-                ->orderBy('area_kode', 'asc')
-                ->pluck('area_kode')
-                ->toArray();
+            // Cache for 24 hours (1440 minutes)
+            $psaOptions = \Cache::remember('psa_options', 1440 * 60, function () {
+                return Employee::select('area_kode')
+                    ->whereNotNull('area_kode')
+                    ->where('area_kode', '!=', '')
+                    ->distinct()
+                    ->orderBy('area_kode', 'asc')
+                    ->pluck('area_kode')
+                    ->toArray();
+            });
 
             return response()->json([
                 'success' => true,
                 'data' => $psaOptions
             ]);
         } catch (Exception $e) {
+            \Log::error('PSA Options Error', [
+                'error' => $e->getMessage()
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => 'Gagal mengambil data PSA: ' . $e->getMessage(),
                 'data' => []
             ], 500);
         }
     }
 
     /**
-     * Get Divisi options from Employee database
+     * Get Divisi options from Employee database (with caching)
      */
     public function getDivisiOptions()
     {
         try {
-            $divisiOptions = Employee::select('cost_center')
-                ->whereNotNull('cost_center')
-                ->where('cost_center', '!=', '')
-                ->whereLike('cost_center', 'divisi%')
-                ->distinct()
-                ->orderBy('cost_center', 'asc')
-                ->pluck('cost_center')
-                ->toArray();
+            // Cache for 24 hours (1440 minutes)
+            $divisiOptions = \Cache::remember('divisi_options', 1440 * 60, function () {
+                return Employee::select('cost_center')
+                    ->whereNotNull('cost_center')
+                    ->where('cost_center', '!=', '')
+                    ->whereLike('cost_center', 'div%')
+                    ->distinct()
+                    ->orderBy('cost_center', 'asc')
+                    ->pluck('cost_center')
+                    ->toArray();
+            });
 
             return response()->json([
                 'success' => true,
                 'data' => $divisiOptions
             ]);
         } catch (Exception $e) {
+            \Log::error('Divisi Options Error', [
+                'error' => $e->getMessage()
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => 'Gagal mengambil data Divisi: ' . $e->getMessage(),
                 'data' => []
             ], 500);
         }

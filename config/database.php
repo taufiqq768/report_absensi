@@ -86,20 +86,24 @@ return [
         'hris_mysql' => [
             'driver' => 'mysql',
             'url' => env('HRIS_DB_URL'),
-            'host' => env('HRIS_DB_HOST', '127.0.0.1'),
-            'port' => env('HRIS_DB_PORT', '3307'),
-            'database' => env('HRIS_DB_DATABASE', 'HRIS_db'),
-            'username' => env('HRIS_DB_USERNAME', 'root'),
+            'host' => env('HRIS_DB_HOST', '10.100.11.220'),
+            'port' => env('HRIS_DB_PORT', '3306'),
+            'database' => env('HRIS_DB_DATABASE', 'hris_db_cpanel'),
+            'username' => env('HRIS_DB_USERNAME', 'hris_user'),
             'password' => env('HRIS_DB_PASSWORD', ''),
             'unix_socket' => env('HRIS_DB_SOCKET', ''),
             'charset' => env('HRIS_DB_CHARSET', 'utf8mb4'),
             'collation' => env('HRIS_DB_COLLATION', 'utf8mb4_unicode_ci'),
             'prefix' => '',
             'prefix_indexes' => true,
-            'strict' => true,
+            'strict' => false,  // Disable strict mode for compatibility
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 PDO::MYSQL_ATTR_SSL_CA => env('HRIS_MYSQL_ATTR_SSL_CA'),
+                PDO::ATTR_PERSISTENT => true,   // Enable persistent for direct connection
+                PDO::ATTR_TIMEOUT => 60,        // 60 seconds for slow network
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::MYSQL_ATTR_INIT_COMMAND => "SET SESSION sql_mode='NO_ENGINE_SUBSTITUTION'",
             ]) : [],
         ],
 
