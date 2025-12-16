@@ -50,6 +50,9 @@ async function handleLogin(e) {
     e.preventDefault();
 
     try {
+        // Clear any previous session data first
+        localStorage.removeItem('hcis_credentials');
+
         // Show loading
         showLoading();
 
@@ -66,7 +69,7 @@ async function handleLogin(e) {
         const credentials = { username, password };
         const token = await generateToken(credentials);
 
-        // If successful, store credentials
+        // If successful, store NEW credentials (overwriting old ones)
         storeCredentials(credentials);
 
         // Show success message

@@ -1,7 +1,10 @@
 // API Configuration
 const API_CONFIG = {
+    baseUrl: 'http://hcis.holding-perkebunan.com',
     tokenUrl: 'http://hcis.holding-perkebunan.com/api/generate_token_api',
-    dataUrl: 'http://hcis.holding-perkebunan.com/api/absensi/get-n1'
+    dataUrl: 'http://hcis.holding-perkebunan.com/api/absensi/get-n1',
+    psaOptionsUrl: 'http://hcis.holding-perkebunan.com/api/psa-options',
+    divisiOptionsUrl: 'http://hcis.holding-perkebunan.com/api/divisi-options'
 };
 
 // DOM Elements
@@ -32,6 +35,8 @@ const elements = {
 
 // State Management
 let currentData = null;
+let PSA_OPTIONS = [];
+let DIVISI_OPTIONS = [];
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -39,6 +44,12 @@ document.addEventListener('DOMContentLoaded', () => {
     checkAuthentication();
     setupEventListeners();
     displayUserInfo();
+
+    // Load dropdown options after a short delay to ensure DOM is ready
+    setTimeout(() => {
+        loadPsaOptions();
+        loadDivisiOptions();
+    }, 100);
 });
 
 // Check Authentication
@@ -62,22 +73,58 @@ function displayUserInfo() {
     if (credentials && credentials.username) {
         elements.loggedInUser.textContent = credentials.username;
         elements.userInfo.style.display = 'block';
+
+        // Clear any stale data from previous session
+        sessionStorage.clear();
     }
 }
 
-// Logout Function
+// Logout Function (kept for backward compatibility, but not used directly)
 function logout() {
+    // This function is now handled by form submission in setupEventListeners
     // Clear credentials from localStorage
     localStorage.removeItem('hcis_credentials');
     // Redirect to login page
     window.location.href = 'login.html';
 }
 
-// Event Listeners
+// Setup Event Listeners
 function setupEventListeners() {
     elements.fetchBtn.addEventListener('click', fetchData);
     elements.resetBtn.addEventListener('click', resetForm);
-    elements.logoutBtn.addEventListener('click', logout);
+
+    // Handle logout form submission
+    const logoutForm = document.getElementById('logoutForm');
+    if (logoutForm) {
+        logoutForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            try {
+                // Send logout request to backend
+                const response = await fetch(API_CONFIG.baseUrl + '/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                    }
+                });
+
+                if (response.ok) {
+                    // Clear localStorage
+                    localStorage.removeItem('hcis_credentials');
+                    // Redirect to login
+                    window.location.href = 'login.html';
+                } else {
+                    throw new Error('Logout failed');
+                }
+            } catch (error) {
+                console.error('Logout error:', error);
+                // Force logout on client side if server logout fails
+                localStorage.removeItem('hcis_credentials');
+                window.location.href = 'login.html';
+            }
+        });
+    }
 
     // Allow form submission with Enter key
     elements.filterForm.addEventListener('submit', (e) => {
@@ -88,12 +135,13 @@ function setupEventListeners() {
 
 // Reset Form
 function resetForm() {
-    elements.ptpn.value = 'AMCO';
-    elements.psa.value = 'HA00';
-    elements.regional.value = 'HEAD_OFFICE';
-    elements.dariTanggal.value = '2025-11-05';
-    elements.sampaiTanggal.value = '2025-11-05';
-    elements.user.value = '12345678';
+    // Clear form values
+    elements.ptpn.value = '';
+    elements.psa.value = '';
+    elements.regional.value = '';
+    elements.dariTanggal.value = '';
+    elements.sampaiTanggal.value = '';
+    elements.user.value = '';
 
     // Clear table
     hideAllStates();
@@ -144,6 +192,161 @@ async function generateToken() {
         throw error;
     }
 }
+
+// Helper function to populate select dropdown
+function populateSelect(id, options, selected) {
+    const el = document.getElementById(id);
+    if (!el) return;
+
+    let html = '<option value="">-- Pilih --</option>';
+    html += options
+        .map(opt => `<option value="${opt}" ${opt === selected ? 'selected' : ''}>${opt}</option>`)
+        .join('');
+    el.innerHTML = html;
+}
+
+// Load PSA Options from Backend (with retry logic)
+async function loadPsaOptions(retries = 3) {
+    try {
+        const response = await Promise.race([
+            fetch(API_CONFIG.psaOptionsUrl, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            }),
+            // 5 second timeout
+            new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('PSA options request timeout')), 5000)
+            )
+        ]);
+
+        if (!response.ok) {
+            throw new Error(`Failed to load PSA options: ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        if (result.success && result.data && Array.isArray(result.data)) {
+            PSA_OPTIONS = result.data;
+            console.log('✓ PSA Options loaded successfully:', result.data.length, 'items');
+            // Populate PSA dropdown with empty default
+            populateSelect('psa', PSA_OPTIONS, '');
+            // Cache in sessionStorage for faster future access
+            sessionStorage.setItem('psa_options_cache', JSON.stringify(result.data));
+        } else {
+            console.warn('⚠ No PSA options returned from server');
+            populateSelect('psa', [], '');
+        }
+    } catch (error) {
+        console.error('✗ Error loading PSA options:', error.message);
+        // Retry if we have retries left
+        if (retries > 0) {
+            console.log(`Retrying PSA options load (${retries} retries left)...`);
+            setTimeout(() => loadPsaOptions(retries - 1), 1000);
+        } else {
+            // Show error in dropdown
+            populateSelect('psa', [], '');
+            console.warn('⚠ PSA options unavailable - please ensure VPN is connected to HRIS server');
+        }
+    }
+}
+
+// Load Divisi Options from Backend (with retry logic)
+async function loadDivisiOptions(retries = 3) {
+    try {
+        const response = await Promise.race([
+            fetch(API_CONFIG.divisiOptionsUrl, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            }),
+            // 5 second timeout
+            new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Divisi options request timeout')), 5000)
+            )
+        ]);
+
+        if (!response.ok) {
+            throw new Error(`Failed to load Divisi options: ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        if (result.success && result.data && Array.isArray(result.data)) {
+            DIVISI_OPTIONS = result.data;
+            console.log('✓ Divisi Options loaded successfully:', result.data.length, 'items');
+            // Populate Divisi dropdown with empty default
+            populateSelect('regional', DIVISI_OPTIONS, '');
+            // Cache in sessionStorage for faster future access
+            sessionStorage.setItem('divisi_options_cache', JSON.stringify(result.data));
+        } else {
+            console.warn('⚠ No Divisi options returned from server');
+            populateSelect('regional', [], '');
+        }
+    } catch (error) {
+        console.error('✗ Error loading Divisi options:', error.message);
+        // Retry if we have retries left
+        if (retries > 0) {
+            console.log(`Retrying Divisi options load (${retries} retries left)...`);
+            setTimeout(() => loadDivisiOptions(retries - 1), 1000);
+        } else {
+            // Show error in dropdown
+            populateSelect('regional', [], '');
+            console.warn('⚠ Divisi options unavailable - please ensure VPN is connected to HRIS server');
+        }
+    }
+}
+
+// Helper function to populate PSA dropdown (if needed in future)
+function populatePsaDropdown(psaList) {
+    if (!elements.psa) return;
+
+    // Keep current value if it exists
+    const currentValue = elements.psa.value;
+
+    // Clear and repopulate
+    elements.psa.innerHTML = '<option value="">-- Pilih PSA --</option>';
+
+    psaList.forEach(psa => {
+        const option = document.createElement('option');
+        option.value = psa;
+        option.textContent = psa;
+        elements.psa.appendChild(option);
+    });
+
+    // Restore previous value if still available
+    if (psaList.includes(currentValue)) {
+        elements.psa.value = currentValue;
+    }
+}
+
+// Helper function to populate Divisi dropdown (if needed in future)
+function populateDivisiDropdown(divisiList) {
+    if (!elements.regional) return;
+
+    // Keep current value if it exists
+    const currentValue = elements.regional.value;
+
+    // Clear and repopulate
+    elements.regional.innerHTML = '<option value="">-- Pilih Divisi --</option>';
+
+    divisiList.forEach(divisi => {
+        const option = document.createElement('option');
+        option.value = divisi;
+        option.textContent = divisi;
+        elements.regional.appendChild(option);
+    });
+
+    // Restore previous value if still available
+    if (divisiList.includes(currentValue)) {
+        elements.regional.value = currentValue;
+    }
+}
+
 
 // Fetch Data from API
 async function fetchData() {

@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Laporan Absensi Karyawan - HCIS Holding Perkebunan">
+    <meta name="csrf-token" content="token">
     <title>Laporan Absensi Karyawan</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -26,10 +27,12 @@
                     <p style="color: var(--text-secondary); margin-bottom: 0.5rem;">
                         👤 <strong id="loggedInUser"></strong>
                     </p>
-                    <button id="logoutBtn" class="btn"
-                        style="background: var(--gradient-secondary); padding: 0.5rem 1rem; font-size: 0.9rem;">
-                        🚪 Logout
-                    </button>
+                    <form id="logoutForm" method="POST" style="display: inline;">
+                        <button id="logoutBtn" type="submit" class="btn"
+                            style="background: var(--gradient-secondary); padding: 0.5rem 1rem; font-size: 0.9rem;">
+                            🚪 Logout
+                        </button>
+                    </form>
                 </div>
             </div>
         </header>
@@ -40,33 +43,36 @@
             <form id="filterForm" class="filter-form">
                 <div class="form-group">
                     <label for="ptpn">PTPN</label>
-                    <input type="text" id="ptpn" name="ptpn" value="AMCO" placeholder="Masukkan PTPN">
+                    <input type="text" id="ptpn" name="ptpn" placeholder="Masukkan PTPN">
                 </div>
 
                 <div class="form-group">
                     <label for="psa">PSA</label>
-                    <input type="text" id="psa" name="psa" value="HA00" placeholder="Masukkan PSA">
+                    <select id="psa" name="psa">
+                        <option value="">-- Loading PSA --</option>
+                    </select>
                 </div>
 
                 <div class="form-group">
-                    <label for="regional">Regional</label>
-                    <input type="text" id="regional" name="regional" value="HEAD_OFFICE"
-                        placeholder="Masukkan Regional">
+                    <label for="regional">Divisi</label>
+                    <select id="regional" name="regional">
+                        <option value="">-- Loading Divisi --</option>
+                    </select>
                 </div>
 
                 <div class="form-group">
                     <label for="dariTanggal">Dari Tanggal</label>
-                    <input type="date" id="dariTanggal" name="dariTanggal" value="2025-11-05">
+                    <input type="date" id="dariTanggal" name="dariTanggal">
                 </div>
 
                 <div class="form-group">
                     <label for="sampaiTanggal">Sampai Tanggal</label>
-                    <input type="date" id="sampaiTanggal" name="sampaiTanggal" value="2025-11-05">
+                    <input type="date" id="sampaiTanggal" name="sampaiTanggal">
                 </div>
 
                 <div class="form-group">
                     <label for="user">User ID</label>
-                    <input type="text" id="user" name="user" value="12345678" placeholder="Masukkan User ID">
+                    <input type="text" id="user" name="user" placeholder="Masukkan User ID">
                 </div>
             </form>
 

@@ -23,7 +23,15 @@ class AbsensiController extends Controller
     public function index()
     {
         $username = Session::get('username');
-        return view('dashboard', compact('username'));
+
+        // Set cache control headers to prevent browser caching of authenticated pages
+        $response = response()
+            ->view('dashboard', compact('username'))
+            ->header('Cache-Control', 'no-cache, no-store, must-revalidate, private')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', '0');
+
+        return $response;
     }
 
     public function getData(Request $request)
@@ -419,17 +427,25 @@ class AbsensiController extends Controller
             return response()->json([
                 'success' => true,
                 'data' => $psaOptions
-            ]);
+            ])
+            ->header('Cache-Control', 'public, max-age=86400')
+            ->header('Access-Control-Allow-Origin', '*')
+            ->header('Access-Control-Allow-Methods', 'GET')
+            ->header('Access-Control-Allow-Headers', 'Content-Type');
         } catch (Exception $e) {
             \Log::error('PSA Options Error', [
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
 
+            // Return 200 OK with empty data instead of 500, to prevent frontend from blocking
             return response()->json([
-                'success' => false,
-                'message' => 'Gagal mengambil data PSA: ' . $e->getMessage(),
+                'success' => true,
+                'message' => 'Data PSA tidak tersedia saat ini',
                 'data' => []
-            ], 500);
+            ])
+            ->header('Access-Control-Allow-Origin', '*')
+            ->header('Cache-Control', 'public, max-age=300');
         }
     }
 
@@ -441,30 +457,55 @@ class AbsensiController extends Controller
         try {
             // Cache for 24 hours (1440 minutes)
             $divisiOptions = \Cache::remember('divisi_options', 1440 * 60, function () {
-                return Employee::select('cost_center')
+                $query = Employee::select('cost_center')
                     ->whereNotNull('cost_center')
                     ->where('cost_center', '!=', '')
-                    ->whereLike('cost_center', 'div%')
                     ->distinct()
-                    ->orderBy('cost_center', 'asc')
-                    ->pluck('cost_center')
-                    ->toArray();
+                    ->orderBy('cost_center', 'asc');
+
+                // Try to filter by 'div%' pattern, but catch any errors
+                try {
+                    // Use where with 'like' operator for case-insensitive matching
+                    return $query->where('cost_center', 'like', 'div%')
+                        ->pluck('cost_center')
+                        ->toArray();
+                } catch (\Exception $e) {
+                    // If the above fails, return all cost_center values
+                    \Log::warning('Divisi filter (div%) failed, returning all cost_center values', [
+                        'error' => $e->getMessage()
+                    ]);
+                    return Employee::select('cost_center')
+                        ->whereNotNull('cost_center')
+                        ->where('cost_center', '!=', '')
+                        ->distinct()
+                        ->orderBy('cost_center', 'asc')
+                        ->pluck('cost_center')
+                        ->toArray();
+                }
             });
 
             return response()->json([
                 'success' => true,
                 'data' => $divisiOptions
-            ]);
+            ])
+            ->header('Cache-Control', 'public, max-age=86400')
+            ->header('Access-Control-Allow-Origin', '*')
+            ->header('Access-Control-Allow-Methods', 'GET')
+            ->header('Access-Control-Allow-Headers', 'Content-Type');
         } catch (Exception $e) {
             \Log::error('Divisi Options Error', [
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
 
+            // Return 200 OK with empty data instead of 500, to prevent frontend from blocking
             return response()->json([
-                'success' => false,
-                'message' => 'Gagal mengambil data Divisi: ' . $e->getMessage(),
+                'success' => true,
+                'message' => 'Data Divisi tidak tersedia saat ini',
                 'data' => []
-            ], 500);
+            ])
+            ->header('Access-Control-Allow-Origin', '*')
+            ->header('Cache-Control', 'public, max-age=300');
         }
     }
 
