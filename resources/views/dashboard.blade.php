@@ -319,13 +319,152 @@
             </div>
         </div>
 
+        <!-- Map Preview Modal -->
+        <div id="mapModal" class="map-modal" style="display: none;">
+            <div class="map-modal-content">
+                <div class="map-modal-header">
+                    <h3>📍 Lokasi Check-In</h3>
+                    <button class="map-modal-close" id="closeMapModal">&times;</button>
+                </div>
+                <div id="mapContainer" style="width: 100%; height: 400px; border-radius: 8px; overflow: hidden;"></div>
+                <div class="map-modal-info">
+                    <p>Longitude: <strong id="mapLongitude">-</strong></p>
+                    <p>Latitude: <strong id="mapLatitude">-</strong></p>
+                </div>
+            </div>
+        </div>
+
         <footer class="footer">
             <p>&copy; 2025 PTPN I. All rights reserved.</p>
         </footer>
     </div>
 @endsection
 
+@push('styles')
+    <style>
+        /* Map Modal Styles */
+        .map-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .map-modal-content {
+            background: white;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 700px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            animation: slideUp 0.3s ease;
+        }
+
+        .map-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .map-modal-header h3 {
+            margin: 0;
+            font-size: 1.25rem;
+            color: var(--text-primary);
+        }
+
+        .map-modal-close {
+            background: none;
+            border: none;
+            font-size: 2rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: color 0.2s ease;
+            padding: 0;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .map-modal-close:hover {
+            color: var(--text-primary);
+        }
+
+        .map-modal-info {
+            padding: 1.5rem;
+            border-top: 1px solid #e5e7eb;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .map-modal-info p {
+            margin: 0;
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+        }
+
+        .map-modal-info strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(30px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* Button Preview Map Styles */
+        .btn-preview-map {
+            background: linear-gradient(135deg, #b2b7beff, #babbbeff);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2);
+        }
+
+        .btn-preview-map:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        }
+
+        .btn-preview-map:active {
+            transform: translateY(0);
+        }
+
+        /* Leaflet CSS Override */
+        #mapContainer .leaflet-container {
+            background: #f3f4f6;
+        }
+    </style>
+@endpush
+
 @push('scripts')
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
     <script>
         // Loading messages that change over time for dashboard
         const loadingMessagesDashboard = [
@@ -609,6 +748,7 @@
                 'CHECK_IN_TIME',
                 'CHECK_IN_LONG',
                 'CHECK_IN_LAT',
+                'CHECK_IN_PREVIEW',
                 'CHECK_OUT_TIME',
                 'CHECK_OUT_LONG',
                 'CHECK_OUT_LAT',
@@ -626,7 +766,7 @@
 
             // Filter dan urutkan headers sesuai displayColumns
             const headers = displayColumns.length > 0 ?
-                displayColumns.filter(h => allHeaders.includes(h)) :
+                displayColumns.filter(h => allHeaders.includes(h) || h === 'CHECK_IN_PREVIEW') :
                 allHeaders;
 
             elements.tableHeader.innerHTML = headers
@@ -684,7 +824,7 @@
 
             // Use same column filter as generateTable - urutkan sesuai displayColumns
             const headers = displayColumns.length > 0 ?
-                displayColumns.filter(h => allHeaders.includes(h)) :
+                displayColumns.filter(h => allHeaders.includes(h) || h === 'CHECK_IN_PREVIEW') :
                 allHeaders;
 
             const totalRecords = filteredData.length;
@@ -699,8 +839,27 @@
 
             // Render table rows
             elements.tableBody.innerHTML = pageData
-                .map(row => `<tr>${headers.map(h => `<td>${formatCellValue(row[h])}</td>`).join('')}</tr>`)
+                .map(row => `<tr>${headers.map(h => {
+                    if (h === 'CHECK_IN_PREVIEW') {
+                        const checkInLong = row['CHECK_IN_LONG'];
+                        const checkInLat = row['CHECK_IN_LAT'];
+                        if (checkInLong && checkInLat) {
+                            return `<td><button class="btn-preview-map" data-long="${checkInLong}" data-lat="${checkInLat}">📍Peta</button></td>`;
+                        }
+                        return `<td>-</td>`;
+                    }
+                    return `<td>${formatCellValue(row[h])}</td>`;
+                }).join('')}</tr>`)
                 .join('');
+
+            // Add event listeners to preview buttons
+            document.querySelectorAll('.btn-preview-map').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const long = btn.getAttribute('data-long');
+                    const lat = btn.getAttribute('data-lat');
+                    openMapModal(long, lat);
+                });
+            });
 
             // Update pagination info
             elements.currentPage.textContent = currentPageNum;
@@ -927,5 +1086,76 @@
             hideAllStates();
             elements.emptyState.classList.add('active');
         }
+
+        // MAP MODAL FUNCTIONS
+        let mapInstance = null;
+        let mapMarker = null;
+
+        function openMapModal(longitude, latitude) {
+            const mapModal = document.getElementById('mapModal');
+            const mapContainer = document.getElementById('mapContainer');
+            const mapLongitudeEl = document.getElementById('mapLongitude');
+            const mapLatitudeEl = document.getElementById('mapLatitude');
+
+            // Update coordinate display
+            mapLongitudeEl.textContent = longitude;
+            mapLatitudeEl.textContent = latitude;
+
+            // Show modal
+            mapModal.style.display = 'flex';
+
+            // Initialize or update map
+            setTimeout(() => {
+                if (!mapInstance) {
+                    // Create new map
+                    mapInstance = L.map('mapContainer').setView([latitude, longitude], 15);
+
+                    // Add tile layer
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '© OpenStreetMap contributors',
+                        maxZoom: 19
+                    }).addTo(mapInstance);
+
+                    // Add marker
+                    mapMarker = L.marker([latitude, longitude]).addTo(mapInstance)
+                        .bindPopup(`<strong>Lokasi Check-In</strong><br>Longitude: ${longitude}<br>Latitude: ${latitude}`);
+                } else {
+                    // Update existing map
+                    mapInstance.setView([latitude, longitude], 15);
+
+                    if (mapMarker) {
+                        mapMarker.remove();
+                    }
+
+                    mapMarker = L.marker([latitude, longitude]).addTo(mapInstance)
+                        .bindPopup(`<strong>Lokasi Check-In</strong><br>Longitude: ${longitude}<br>Latitude: ${latitude}`);
+                }
+
+                // Invalidate size to ensure map renders correctly
+                mapInstance.invalidateSize();
+            }, 100);
+        }
+
+        function closeMapModal() {
+            const mapModal = document.getElementById('mapModal');
+            mapModal.style.display = 'none';
+        }
+
+        // Close modal when clicking close button
+        document.getElementById('closeMapModal').addEventListener('click', closeMapModal);
+
+        // Close modal when clicking outside the modal content
+        document.getElementById('mapModal').addEventListener('click', (e) => {
+            if (e.target.id === 'mapModal') {
+                closeMapModal();
+            }
+        });
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeMapModal();
+            }
+        });
     </script>
 @endpush
